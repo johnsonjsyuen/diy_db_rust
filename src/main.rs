@@ -1,15 +1,35 @@
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
-    use std::fs::OpenOptions;
-    use std::path::PathBuf;
+use std::fs::OpenOptions;
+use std::path::PathBuf;
+use memmap2::{Mmap, MmapMut};
+use byteorder::{ByteOrder, LittleEndian};
 
-    use memmap2::{Mmap, MmapMut};
-struct BNode {
-    data: [u8; 64 * 1024]
-}
+
+const HEADER: u8 = 4;
+const BTREE_PAGE_SIZE: u16 = 4096;
+const BTREE_MAX_KEY_SIZE: u16 = 1000;
+const BTREE_MAX_VAL_SIZE: u16 = 3000;
 
 enum NodeType {
     BNODE_NODE = 1, // internal nodes without values
     BNODE_LEAF = 2, // leaf nodes with values
+}
+
+struct BNode {
+    data: [u8; 64 * 1024]
+}
+
+impl BNode{
+    fn btype(self)->u16{
+        LittleEndian::read_u16(&self.data[0..1])
+    }
+    fn nkeys(self)->u16{
+        LittleEndian::read_u16(&self.data[2..4])
+    }
+    fn setHeader(mut self, btype:u16, nkeys:u16){
+        LittleEndian::write_u16(&mut self.data[0..1], btype);
+        LittleEndian::write_u16(&mut self.data[2..4], nkeys);
+    }
 }
 
 struct BTree {
@@ -18,20 +38,22 @@ struct BTree {
 }
 
 impl BTree {
-    fn get(nodeID: u64)->BNode{
+    fn get(nodeID: u64)->BNode{ // dereference a pointer
+        todo!()
+    }
+    fn new(node: BNode)->u64{  // allocate a new page
+        todo!()
+    }
+    fn del(nodeID: u64)->Result(()){ // deallocate a page
         todo!()
     }
 }
 
-/*type BTree struct {
-    // pointer (a nonzero page number)
-    root uint64
-    // callbacks for managing on-disk pages
-    get func(uint64) BNode // dereference a pointer new func(BNode) uint64 // allocate a new page del func(uint64) // deallocate a page
-}*/
+
+
 #[derive(AsBytes, FromBytes, FromZeroes)]
 #[repr(C)]
-struct PacketHeader {
+struct DatabaseHeader {
     src_port: [u8; 2],
     dst_port: [u8; 2],
     length: [u8; 2],
@@ -58,7 +80,7 @@ fn main()-> Result<(), anyhow::Error>  {
     assert_eq!(buf.capacity(), 998);
 
     // zero-copy
-    let header = PacketHeader {
+    let header = DatabaseHeader {
         src_port: [0, 1],
         dst_port: [2, 3],
         length: [4, 5],
@@ -89,7 +111,7 @@ fn main()-> Result<(), anyhow::Error>  {
 
     let mmap2 = unsafe { Mmap::map(&file)?};
 
-    let header = PacketHeader::ref_from(&mmap2[..]).unwrap();
+    let header = DatabaseHeader::ref_from(&mmap2[..]).unwrap();
 
     assert_eq!(header.src_port, [0, 1]);
     assert_eq!(header.dst_port, [2, 3]);
