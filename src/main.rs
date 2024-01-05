@@ -3,8 +3,8 @@ use std::path::PathBuf;
 
 use byteorder::{ByteOrder, LittleEndian};
 use memmap2::{Mmap, MmapMut};
+use rocksdb::{ColumnFamilyDescriptor, DB, Options};
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
-//use rocksdb::{DB, ColumnFamilyDescriptor, Options, IteratorMode};
 
 
 const HEADER: usize = 4;
@@ -168,5 +168,27 @@ fn main() -> Result<(), anyhow::Error> {
     assert_eq!(header.length, [4, 5]);
     assert_eq!(header.checksum, [6, 7]);
 
+    // rocks db
+    let path = "rocksdbfile";
+    let mut cf_opts = Options::default();
+    cf_opts.set_max_write_buffer_number(16);
+    let cf = ColumnFamilyDescriptor::new("cf1", cf_opts);
+
+    let mut db_opts = Options::default();
+    db_opts.create_missing_column_families(true);
+    db_opts.create_if_missing(true);
+    {
+        let db = DB::open_cf_descriptors(&db_opts, path, vec![cf]).unwrap();
+        db.put(b"santi","dog");
+        db.put(b"pippen","dog");
+        db.put(b"snowy","dog");
+        match db.get(b"santi") {
+            Ok(Some(value)) => println!("retrieved value {}", String::from_utf8(value).unwrap()),
+            Ok(None) => println!("value not found"),
+            Err(e) => println!("operational problem encountered: {}", e),
+        }
+        //db.iterator(IteratorMode::Start).for_each(|Result{(k,v),e}|println!("retrieved value {}", String::from_utf8(t).unwrap()))
+    }
+    let _ = DB::destroy(&db_opts, path);
     Ok(())
 }
