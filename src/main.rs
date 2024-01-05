@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use byteorder::{ByteOrder, LittleEndian};
 use memmap2::{Mmap, MmapMut};
-use rocksdb::{ColumnFamilyDescriptor, DB, Options};
+use rocksdb::{ColumnFamilyDescriptor, DB, DBPath, Options};
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 
@@ -169,7 +169,7 @@ fn main() -> Result<(), anyhow::Error> {
     assert_eq!(header.checksum, [6, 7]);
 
     // rocks db
-    let path = "rocksdbfile";
+    let path = "./rocksdbfile";
     let mut cf_opts = Options::default();
     cf_opts.set_max_write_buffer_number(16);
     let cf = ColumnFamilyDescriptor::new("cf1", cf_opts);
@@ -179,16 +179,17 @@ fn main() -> Result<(), anyhow::Error> {
     db_opts.create_if_missing(true);
     {
         let db = DB::open_cf_descriptors(&db_opts, path, vec![cf]).unwrap();
-        db.put(b"santi","dog");
-        db.put(b"pippen","dog");
-        db.put(b"snowy","dog");
+        db.put(b"santi", "dog").expect("TODO: panic message");
+        db.put(b"pippen", "dog").expect("TODO: panic message");
+        db.put(b"snowy", "dog").expect("TODO: panic message");
         match db.get(b"santi") {
             Ok(Some(value)) => println!("retrieved value {}", String::from_utf8(value).unwrap()),
             Ok(None) => println!("value not found"),
             Err(e) => println!("operational problem encountered: {}", e),
         }
+        db.flush_wal(true).expect("TODO: panic message");
+        db.flush().expect("TODO: panic message");
         //db.iterator(IteratorMode::Start).for_each(|Result{(k,v),e}|println!("retrieved value {}", String::from_utf8(t).unwrap()))
     }
-    let _ = DB::destroy(&db_opts, path);
     Ok(())
 }
