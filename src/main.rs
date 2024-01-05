@@ -20,16 +20,6 @@ struct BNode {
     data: [u8; 64 * 1024],
 }
 
-/*// pointers
-func (node BNode) getPtr(idx uint16) uint64 { assert(idx < node.nkeys())
-pos := HEADER + 8*idx
-return binary.LittleEndian.Uint64(node.data[pos:])
-}
-func (node BNode) setPtr(idx uint16, val uint64) {
-assert(idx < node.nkeys())
-pos := HEADER + 8*idx
-binary.LittleEndian.PutUint64(node.data[pos:], val)
-}*/
 impl BNode {
     fn btype(self) -> u16 {
         LittleEndian::read_u16(&self.data[0..1])
@@ -69,6 +59,24 @@ impl BNode {
     fn setOffset(self, idx: u16, offset: u16) {
         LittleEndian::write_u16(&mut self.data[self.offsetPos(self, idx) + 8], offset);
     }
+    /*
+    // key-values
+func (node BNode) kvPos(idx uint16) uint16 {
+assert(idx <= node.nkeys())
+return HEADER + 8*node.nkeys() + 2*node.nkeys() + node.getOffset(idx)
+}
+func (node BNode) getKey(idx uint16) []byte {
+assert(idx < node.nkeys())
+pos := node.kvPos(idx)
+klen := binary.LittleEndian.Uint16(node.data[pos:]) return node.data[pos+4:][:klen]
+}
+func (node BNode) getVal(idx uint16) []byte {
+assert(idx < node.nkeys())
+pos := node.kvPos(idx)
+klen := binary.LittleEndian.Uint16(node.data[pos+0:]) vlen := binary.LittleEndian.Uint16(node.data[pos+2:]) return node.data[pos+4+klen:][:vlen]
+}
+     */
+
 }
 
 struct BTree {
