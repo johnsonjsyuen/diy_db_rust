@@ -1,9 +1,9 @@
-use zerocopy::{AsBytes, FromBytes, FromZeroes};
 use std::fs::OpenOptions;
 use std::path::PathBuf;
-use memmap2::{Mmap, MmapMut};
-use byteorder::{ByteOrder, LittleEndian};
 
+use byteorder::{ByteOrder, LittleEndian};
+use memmap2::{Mmap, MmapMut};
+use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 const HEADER: u8 = 4;
 const BTREE_PAGE_SIZE: u16 = 4096;
@@ -11,44 +11,66 @@ const BTREE_MAX_KEY_SIZE: u16 = 1000;
 const BTREE_MAX_VAL_SIZE: u16 = 3000;
 
 enum NodeType {
-    BNODE_NODE = 1, // internal nodes without values
+    BNODE_NODE = 1,
+    // internal nodes without values
     BNODE_LEAF = 2, // leaf nodes with values
 }
 
 struct BNode {
-    data: [u8; 64 * 1024]
+    data: [u8; 64 * 1024],
 }
 
-impl BNode{
-    fn btype(self)->u16{
+/*// pointers
+func (node BNode) getPtr(idx uint16) uint64 { assert(idx < node.nkeys())
+pos := HEADER + 8*idx
+return binary.LittleEndian.Uint64(node.data[pos:])
+}
+func (node BNode) setPtr(idx uint16, val uint64) {
+assert(idx < node.nkeys())
+pos := HEADER + 8*idx
+binary.LittleEndian.PutUint64(node.data[pos:], val)
+}*/
+impl BNode {
+    fn btype(self) -> u16 {
         LittleEndian::read_u16(&self.data[0..1])
     }
-    fn nkeys(self)->u16{
+    fn nkeys(self) -> u16 {
         LittleEndian::read_u16(&self.data[2..4])
     }
-    fn setHeader(mut self, btype:u16, nkeys:u16){
+    fn setHeader(mut self, btype: u16, nkeys: u16) -> Result() {
         LittleEndian::write_u16(&mut self.data[0..1], btype);
         LittleEndian::write_u16(&mut self.data[2..4], nkeys);
+        Ok(())
+    }
+    fn getPtr(self, idx: u16) -> u64 {
+        assert!(idx < self.nkeys(), "Tried to get pointer beyond key offsets");
+        let pos = HEADER + 8 * idx;
+        LittleEndian::read_u64(&self.data[pos..pos + 8])
+    }
+    fn setPtr(self, idx: u16, val: u64) -> Result() {
+        assert!(idx < self.nkeys(), "Tried to set pointer beyond key offsets");
+        let pos = HEADER + 8 * idx;
+        LittleEndian::write_u64(&self.data[pos..pos + 8], val);
+        Ok(())
     }
 }
 
 struct BTree {
     // pointer (a nonzero page number)
-    root: u64
+    root: u64,
 }
 
 impl BTree {
-    fn get(nodeID: u64)->BNode{ // dereference a pointer
+    fn get(nodeID: u64) -> BNode { // dereference a pointer
         todo!()
     }
-    fn new(node: BNode)->u64{  // allocate a new page
+    fn new(node: BNode) -> u64 {  // allocate a new page
         todo!()
     }
-    fn del(nodeID: u64)->Result(()){ // deallocate a page
+    fn del(nodeID: u64) -> Result(()) { // deallocate a page
         todo!()
     }
 }
-
 
 
 #[derive(AsBytes, FromBytes, FromZeroes)]
@@ -60,10 +82,10 @@ struct DatabaseHeader {
     checksum: [u8; 2],
 }
 
-fn main()-> Result<(), anyhow::Error>  {
+fn main() -> Result<(), anyhow::Error> {
     // bytes
     println!("Hello, world!");
-    use bytes::{BytesMut, BufMut};
+    use bytes::{BufMut, BytesMut};
 
     let mut buf = BytesMut::with_capacity(1024);
     buf.put(&b"hello world"[..]);
@@ -109,7 +131,7 @@ fn main()-> Result<(), anyhow::Error>  {
 
     mmap.copy_from_slice(&bytes);
 
-    let mmap2 = unsafe { Mmap::map(&file)?};
+    let mmap2 = unsafe { Mmap::map(&file)? };
 
     let header = DatabaseHeader::ref_from(&mmap2[..]).unwrap();
 
