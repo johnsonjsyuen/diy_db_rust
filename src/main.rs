@@ -53,6 +53,22 @@ impl BNode {
         LittleEndian::write_u64(&self.data[pos..pos + 8], val);
         Ok(())
     }
+    fn offsetPos(node: BNode, idx: u16) -> u16 {
+        assert!(1 <= idx && idx <= node.nkeys(), "Tried to access pointer beyond range");
+        HEADER as u16 + 8 * node.nkeys() + 2 * (idx - 1)
+    }
+
+    fn getOffset(self, idx: u16) -> u16 {
+        if idx == 0 {
+            0
+        } else {
+            LittleEndian::read_u64(&self.data[self.offsetPos(self, idx) + 8])
+        }
+    }
+
+    fn setOffset(self, idx: u16, offset: u16) {
+        LittleEndian::write_u16(&mut self.data[self.offsetPos(self, idx) + 8], offset);
+    }
 }
 
 struct BTree {
