@@ -4,8 +4,10 @@ use std::path::PathBuf;
 use byteorder::{ByteOrder, LittleEndian};
 use memmap2::{Mmap, MmapMut};
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
+//use rocksdb::{DB, ColumnFamilyDescriptor, Options, IteratorMode};
 
-const HEADER: u8 = 4;
+
+const HEADER: usize = 4;
 const BTREE_PAGE_SIZE: u16 = 4096;
 const BTREE_MAX_KEY_SIZE: u16 = 1000;
 const BTREE_MAX_VAL_SIZE: u16 = 3000;
@@ -21,43 +23,45 @@ struct BNode {
 }
 
 impl BNode {
-    fn btype(self) -> u16 {
+    fn btype(&self) -> u16 {
         LittleEndian::read_u16(&self.data[0..1])
     }
-    fn nkeys(self) -> u16 {
+    fn nkeys(&self) -> u16 {
         LittleEndian::read_u16(&self.data[2..4])
     }
-    fn setHeader(mut self, btype: u16, nkeys: u16) -> Result() {
+    fn setHeader(&mut self, btype: u16, nkeys: u16) -> Result<(), anyhow::Error> {
         LittleEndian::write_u16(&mut self.data[0..1], btype);
         LittleEndian::write_u16(&mut self.data[2..4], nkeys);
         Ok(())
     }
-    fn getPtr(self, idx: u16) -> u64 {
+    fn getPtr(&self, idx: u16) -> u64 {
         assert!(idx < self.nkeys(), "Tried to get pointer beyond key offsets");
-        let pos = HEADER + 8 * idx;
+        let pos = HEADER + (8 * idx) as usize;
         LittleEndian::read_u64(&self.data[pos..pos + 8])
     }
-    fn setPtr(self, idx: u16, val: u64) -> Result() {
+    fn setPtr(&mut self, idx: u16, val: u64) -> Result<(), anyhow::Error> {
         assert!(idx < self.nkeys(), "Tried to set pointer beyond key offsets");
-        let pos = HEADER + 8 * idx;
-        LittleEndian::write_u64(&self.data[pos..pos + 8], val);
+        let pos = HEADER + (8 * idx) as usize;
+        LittleEndian::write_u64(&mut self.data[pos..pos + 8], val);
         Ok(())
     }
-    fn offsetPos(node: BNode, idx: u16) -> u16 {
+    fn offsetPos(node: &BNode, idx: u16) -> usize {
         assert!(1 <= idx && idx <= node.nkeys(), "Tried to access pointer beyond range");
-        HEADER as u16 + 8 * node.nkeys() + 2 * (idx - 1)
+        HEADER + (8 * node.nkeys() + 2 * (idx - 1)) as usize
     }
 
-    fn getOffset(self, idx: u16) -> u16 {
+    fn getOffset(&self, idx: u16) -> u16 {
         if idx == 0 {
             0
         } else {
-            LittleEndian::read_u64(&self.data[self.offsetPos(self, idx) + 8])
+            let pos = BNode::offsetPos(self, idx);
+            LittleEndian::read_u16(&self.data[pos..pos+8])
         }
     }
 
-    fn setOffset(self, idx: u16, offset: u16) {
-        LittleEndian::write_u16(&mut self.data[self.offsetPos(self, idx) + 8], offset);
+    fn setOffset(&mut self, idx: u16, offset: u16) {
+        let pos = BNode::offsetPos(self, idx);
+        LittleEndian::write_u16(&mut self.data[pos..pos+8], offset);
     }
     /*
     // key-values
@@ -91,7 +95,7 @@ impl BTree {
     fn new(node: BNode) -> u64 {  // allocate a new page
         todo!()
     }
-    fn del(nodeID: u64) -> Result(()) { // deallocate a page
+    fn del(nodeID: u64) -> Result<(), anyhow::Error> { // deallocate a page
         todo!()
     }
 }
