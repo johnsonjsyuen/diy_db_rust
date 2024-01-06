@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use byteorder::{ByteOrder, LittleEndian};
 use memmap2::{Mmap, MmapMut};
-use rocksdb::{ColumnFamilyDescriptor, DB, DBPath, Options};
+use rocksdb::{ColumnFamilyDescriptor, DB, DBPath, IteratorMode, Options};
 use zerocopy::{AsBytes, FromBytes, FromZeroes};
 
 
@@ -179,9 +179,9 @@ fn main() -> Result<(), anyhow::Error> {
     db_opts.create_if_missing(true);
     {
         let db = DB::open_cf_descriptors(&db_opts, path, vec![cf]).unwrap();
-        db.put(b"santi", "dog").expect("TODO: panic message");
-        db.put(b"pippen", "dog").expect("TODO: panic message");
-        db.put(b"snowy", "dog").expect("TODO: panic message");
+        //db.put(b"santi", "dog").expect("TODO: panic message");
+        //db.put(b"pippen", "dog").expect("TODO: panic message");
+        //db.put(b"snowy", "dog").expect("TODO: panic message");
         match db.get(b"santi") {
             Ok(Some(value)) => println!("retrieved value {}", String::from_utf8(value).unwrap()),
             Ok(None) => println!("value not found"),
@@ -189,7 +189,13 @@ fn main() -> Result<(), anyhow::Error> {
         }
         db.flush_wal(true).expect("TODO: panic message");
         db.flush().expect("TODO: panic message");
-        //db.iterator(IteratorMode::Start).for_each(|Result{(k,v),e}|println!("retrieved value {}", String::from_utf8(t).unwrap()))
+        let iter = db.iterator(IteratorMode::Start);
+        let res = iter.collect::<Result<Vec<_>, _>>().unwrap();
+        res.iter().for_each(|(i, x)|{
+            let k = String::from_utf8(i.to_vec()).unwrap();
+            let v = String::from_utf8(x.to_vec()).unwrap();
+            println!("{k} : {v}");
+        });
     }
     Ok(())
 }
