@@ -179,15 +179,14 @@ fn main() -> Result<(), anyhow::Error> {
     db_opts.create_if_missing(true);
     {
         let db = DB::open_cf_descriptors(&db_opts, path, vec![cf]).unwrap();
-        //db.put(b"santi", "dog").expect("TODO: panic message");
-        //db.put(b"pippen", "dog").expect("TODO: panic message");
-        //db.put(b"snowy", "dog").expect("TODO: panic message");
+        db.put(b"santi", "gg").expect("TODO: panic message");
+        db.put(b"pippen", "dog").expect("TODO: panic message");
+        db.put(b"snowy", "dog").expect("TODO: panic message");
         match db.get(b"santi") {
             Ok(Some(value)) => println!("retrieved value {}", String::from_utf8(value).unwrap()),
             Ok(None) => println!("value not found"),
             Err(e) => println!("operational problem encountered: {}", e),
         }
-        db.flush_wal(true).expect("TODO: panic message");
         db.flush().expect("TODO: panic message");
         let iter = db.iterator(IteratorMode::Start);
         let res = iter.collect::<Result<Vec<_>, _>>().unwrap();
